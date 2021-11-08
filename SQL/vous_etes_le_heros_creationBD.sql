@@ -45,7 +45,8 @@ CREATE TABLE personnage
     endurance INT NOT NULL,
     habilete  INT NOT NULL,
     `or`      INT NOT NULL DEFAULT 12,
-    FOREIGN KEY (id_partie) REFERENCES partie (id)
+    FOREIGN KEY (id_partie) REFERENCES partie (id),
+    CONSTRAINT CHECK(`or` <= 50)
 );
 
 CREATE TABLE discipline_kai
@@ -112,37 +113,3 @@ CREATE TABLE discipline_kai_personnage
 
 
 
-
-# Exemple Fonction
-DROP FUNCTION IF EXISTS no_name_function;
-DELIMITER $$
-CREATE FUNCTION no_name_function(_pin VARCHAR(100), _classe_id INT) RETURNS BOOLEAN
-    READS SQL DATA NOT DETERMINISTIC
-BEGIN
-    DECLARE _return BOOLEAN DEFAULT FALSE;
-
-    RETURN _return;
-END; $$
-DELIMITER ;
-
-
-# Exemple Procédure
-DROP PROCEDURE IF EXISTS no_name;
-DELIMITER $$
-CREATE PROCEDURE no_name(IN _date DATE)
-BEGIN
-
-END; $$
-DELIMITER ;
-
-# question 2
-DROP TRIGGER IF EXISTS no_name_trigger;
-DELIMITER $$
-CREATE TRIGGER no_name_trigger
-    BEFORE INSERT
-    ON personnage
-    FOR EACH ROW
-BEGIN
-
-END; $$
-DELIMITER ;
