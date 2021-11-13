@@ -1,10 +1,11 @@
+from logging import info
 import sys
 from typing import Tuple
+
+import mysql.connector
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-
-import mysql.connector
 
 mybd = mysql.connector.connect(
     host="localhost",
@@ -70,8 +71,39 @@ class MainWindow(QMainWindow):
         page_tab.setLayout(outer_layout)
         return page_tab
 
+    def personnageTabUI(self) -> QWidget:
+        personnage_tab = QWidget()
+        outer_layout = QVBoxLayout()
+        layout_attributs = QHBoxLayout()
+        layout_objet = QVBoxLayout()
+
+        list_objets = QListWidget()
+        objets = self.requeteObjets()
+        for i in range(0, 8):
+            if i < len(objets):
+                nom = objets[i]
+            else:
+                nom = 'vide'
+            list_objets.addItem(nom)
+        layout_objet.addWidget(list_objets)
+        self.selection_objet = QComboBox()
+        layout_objet.addWidget(self.selection_objet)
+
+        attributs = self.requeteInfoPersonnage()
+        text_endurance = QLineEdit(str(attributs['endurance']))
+        text_habilete = QLineEdit(str(attributs['habilete']))
+        text_or = QLineEdit(str(attributs['or']))
+        layout_attributs.addWidget(text_endurance)
+        layout_attributs.addWidget(text_habilete)
+        layout_attributs.addWidget(text_or)
+        
+        outer_layout.addLayout(layout_attributs)
+        outer_layout.addLayout(layout_objet)
+        personnage_tab.setLayout(outer_layout)
+        return personnage_tab
+
     def requetePersonnage(self) -> dict[str, int]:
-        mon_curseur.execute("SELECT nom, titre, partie.id as id_livre FROM partie INNER JOIN livre ON id_livre = livre.id order by nom;")
+        mon_curseur.execute("SELECT nom, titre, partie.id as id_livre FROM partie INNER JOIN livre ON id_livre = livre.id ORDER BY nom;")
         resultat = mon_curseur.fetchall()
         
         parties = {}
@@ -83,9 +115,32 @@ class MainWindow(QMainWindow):
         parties['titre'] = titres
         parties['id'] = ids
         return parties
+    
+    def requeteInfoPersonnage(self):
+        sql = "SELECT endurance, habilete, `or` as or_perso FROM personnage WHERE id_partie = %s;"
+        data = (self.id_partie,)
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        infos = {}
+        for endurance, habilete, or_perso in resultat:
+            infos['endurance'] = endurance
+            infos['habilete'] = habilete
+            infos['or'] = or_perso
+        return infos
 
-    def requeteTextePage(self, id:int) -> str:
-        data = (id,)
+    def requeteObjets(self):
+        data  = (self.id_partie,)
+        sql = """SELECT nom FROM personnage INNER JOIN objet_personnage ON id_personnage = personnage.id 
+                INNER JOIN objet ON id_objet = objet.id WHERE id_partie = %s;"""
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        nom_objet = []
+        for nom in resultat:
+            nom_objet.append(nom[0])
+        return nom_objet
+
+    def requeteTextePage(self, id_partie:int) -> str:
+        data = (id_partie,)
         sql = "SELECT texte AS texte_chapitre, id_chapitre FROM partie INNER JOIN chapitre ON chapitre.id = id_chapitre WHERE partie.id = %s;"
         mon_curseur.execute(sql, data)
         resultats = mon_curseur.fetchall()
@@ -95,8 +150,8 @@ class MainWindow(QMainWindow):
             self.chapitre = id_chapitre
         return texte
 
-    def requeteChoix(self, id:int) -> QPushButton:
-        data = (id,)
+    def requeteChoix(self, id_chapitre:int) -> QPushButton:
+        data = (id_chapitre,)
         sql = "SELECT numero_chapitre_destination FROM choix_page WHERE id_chapitre = %s;"
         mon_curseur.execute(sql, data)
         resultats = mon_curseur.fetchall()
@@ -108,8 +163,9 @@ class MainWindow(QMainWindow):
     def soumissionSelectionPartie(self):
         self.id_partie = self.combo_box.itemData(self.combo_box.currentIndex())
         page_tab = self.pageTabUI()
+        personnage_tab = self.personnageTabUI()
         self.tabs.addTab(page_tab, "Page")
-
+        self.tabs.addTab(personnage_tab, "Personnage")
         self.tabs.removeTab(0)
     
     def changementPage(self):
@@ -126,6 +182,7 @@ class MainWindow(QMainWindow):
         page_tab = self.pageTabUI()
         self.tabs.removeTab(0)
         self.tabs.insertTab(0, page_tab, "Page")
+        self.tabs.setCurrentIndex(0)
 
 if __name__ == '__main__':
    app = QApplication(sys.argv)
