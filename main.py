@@ -28,13 +28,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Dont Vous Êtes le Héros")
         self.setFixedSize(640, 480)
         connexion_tab = self.connexionTabUI()
-
+        creer_tab = self.creerPartieTabUI()
         wid = QWidget(self)
         self.setCentralWidget(wid)
         layout = QVBoxLayout()
         wid.setLayout(layout)
         self.tabs = QTabWidget()
         self.tabs.addTab(connexion_tab, "Connexion")
+        self.tabs.addTab(creer_tab, 'Créer partie')
         layout.addWidget(self.tabs)
 
     def connexionTabUI(self) -> QWidget:
@@ -50,6 +51,36 @@ class MainWindow(QMainWindow):
         layout.addWidget(bouton_selection_partie)
         connexion_tab.setLayout(layout)
         return connexion_tab
+    
+    def creerPartieTabUI(self) -> QWidget:
+        creer_tab = QWidget()
+        layout = QVBoxLayout()
+
+        layout_nom_partie = QHBoxLayout()
+        label_nom_partie = QLabel()
+        self.entre_nom_partie = QLineEdit()
+        label_nom_partie.setText("Entrez le nom de la partie : ")
+        layout_nom_partie.addWidget(label_nom_partie)
+        layout_nom_partie.addWidget(self.entre_nom_partie)
+
+        layout_choix_livre = QHBoxLayout()
+        label_choix_livre = QLabel()
+        self.combo_box_choix_livre = QComboBox()
+        valeurs = self.requeteLivre()
+        for i in range(0, len(valeurs['titre'])):
+            self.combo_box_choix_livre.addItem(valeurs['titre'][i], valeurs['id'][i])
+        label_choix_livre.setText("Choisissez le livre : ")
+        layout_choix_livre.addWidget(label_choix_livre)
+        layout_choix_livre.addWidget(self.combo_box_choix_livre)
+        
+        bouton_soummission_partie = QPushButton("Créer la partie")
+        bouton_soummission_partie.clicked.connect(self.soumissionCreationPartie)
+
+        layout.addLayout(layout_nom_partie)
+        layout.addLayout(layout_choix_livre)
+        layout.addWidget(bouton_soummission_partie)
+        creer_tab.setLayout(layout)
+        return creer_tab
 
     def pageTabUI(self) -> QWidget:
         page_tab = QWidget()
@@ -70,6 +101,20 @@ class MainWindow(QMainWindow):
         page_tab.setLayout(outer_layout)
         return page_tab
 
+    def requeteLivre(self) -> dict[str, int]:
+        mon_curseur.execute("SELECT titre, id FROM livre order by titre;")
+        resultat = mon_curseur.fetchall()
+        livres = {}
+        titres = []
+        ids = []
+        for titre, id in resultat:
+            titres.append(titre)
+            ids.append(id)
+        livres['titre'] = titres
+        livres['id'] = ids
+        return livres
+
+    
     def requetePersonnage(self) -> dict[str, int]:
         mon_curseur.execute("SELECT nom, titre, partie.id as id_livre FROM partie INNER JOIN livre ON id_livre = livre.id order by nom;")
         resultat = mon_curseur.fetchall()
@@ -105,11 +150,28 @@ class MainWindow(QMainWindow):
             boutons.append(QPushButton(str(numero_chapitre_destination[0])))
         return boutons
 
+    def soumissionCreationPartie(self):
+        id_livre = self.combo_box_choix_livre.itemData(self.combo_box_choix_livre.currentIndex())
+        nom = self.entre_nom_partie.text()
+        data = (nom, id_livre, id_livre)
+        sql = "INSERT INTO partie (`nom`, id_chapitre, id_livre) VALUES ( %s, premier_chapitre_id(%s), %s);"
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+
+        self.id_partie = mon_curseur.lastrowid
+        page_tab = self.pageTabUI()
+        self.tabs.addTab(page_tab, "Page")
+
+        self.tabs.removeTab(0)
+        self.tabs.removeTab(0)
+
+        
     def soumissionSelectionPartie(self):
         self.id_partie = self.combo_box.itemData(self.combo_box.currentIndex())
         page_tab = self.pageTabUI()
         self.tabs.addTab(page_tab, "Page")
 
+        self.tabs.removeTab(0)
         self.tabs.removeTab(0)
     
     def changementPage(self):

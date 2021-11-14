@@ -11,13 +11,37 @@ END;
 $$
 DELIMITER ;
 
+# Retroune le numero du chapitre dans le livre relié à l'id du chapitre
+DROP FUNCTION IF EXISTS id_numero_chapitre;
+DELIMITER $$
+CREATE FUNCTION id_numero_chapitre(_id_livre INT, _numero_chapitre INT) RETURNS INT
+    READS SQL DATA NOT DETERMINISTIC
+BEGIN
+    RETURN (SELECT id FROM chapitre WHERE numero_chapitre = _numero_chapitre AND id_livre = _id_livre);
+END;
+$$
+DELIMITER ;
+
+# Retroune l'id du premier chapitre dans le livre
+DROP FUNCTION IF EXISTS premier_chapitre_id;
+DELIMITER $$
+CREATE FUNCTION premier_chapitre_id(_id_livre INT) RETURNS INT
+    READS SQL DATA NOT DETERMINISTIC
+BEGIN
+    RETURN (SELECT id FROM chapitre WHERE id_livre = _id_livre and numero_chapitre = 1);
+END;
+$$
+DELIMITER ;
+
 # Retroune le nombre de disciplines-kai du personnage
 DROP FUNCTION IF EXISTS compte_disciplines;
 DELIMITER $$
 CREATE FUNCTION compte_disciplines(_id_personnage INT) RETURNS INT
     READS SQL DATA NOT DETERMINISTIC
 BEGIN
-    RETURN (SELECT count(id_discipline_kai) AS nombre_disciplines FROM discipline_kai_personnage WHERE id_personnage = _id_personnage);
+    RETURN (SELECT COUNT(id_discipline_kai) AS nombre_disciplines
+            FROM discipline_kai_personnage
+            WHERE id_personnage = _id_personnage);
 END;
 $$
 DELIMITER ;
@@ -28,7 +52,11 @@ DELIMITER $$
 CREATE FUNCTION compte_objets(_id_personnage INT) RETURNS INT
     READS SQL DATA NOT DETERMINISTIC
 BEGIN
-    RETURN (SELECT count(op.id) AS nombre_objets FROM objet_personnage op INNER JOIN objet o ON op.id_objet = o.id WHERE op.id_personnage = _id_personnage AND o.type IN('objet','nourriture'));
+    RETURN (SELECT COUNT(op.id) AS nombre_objets
+            FROM objet_personnage op
+                     INNER JOIN objet o ON op.id_objet = o.id
+            WHERE op.id_personnage = _id_personnage
+              AND o.type IN ('objet', 'nourriture'));
 END;
 $$
 DELIMITER ;
@@ -39,7 +67,10 @@ DELIMITER $$
 CREATE FUNCTION compte_armes(_id_personnage INT) RETURNS INT
     READS SQL DATA NOT DETERMINISTIC
 BEGIN
-    RETURN (SELECT count(ap.id) AS nombre_armes FROM arme_personnage ap INNER JOIN arme a ON ap.id_arme = a.id WHERE ap.id_personnage = _id_personnage);
+    RETURN (SELECT COUNT(ap.id) AS nombre_armes
+            FROM arme_personnage ap
+                     INNER JOIN arme a ON ap.id_arme = a.id
+            WHERE ap.id_personnage = _id_personnage);
 END;
 $$
 DELIMITER ;
@@ -72,7 +103,10 @@ DROP PROCEDURE IF EXISTS liste_disciplines_kai;
 DELIMITER $$
 CREATE PROCEDURE liste_disciplines_kai(IN _id_personnage INT)
 BEGIN
-    SELECT nom FROM discipline_kai dk INNER JOIN discipline_kai_personnage dkp ON dk.id = dkp.id_discipline_kai LIMIT 5;
+    SELECT nom
+    FROM discipline_kai dk
+             INNER JOIN discipline_kai_personnage dkp ON dk.id = dkp.id_discipline_kai
+    LIMIT 5;
 END;
 $$
 DELIMITER ;
@@ -82,7 +116,11 @@ DROP PROCEDURE IF EXISTS liste_objets;
 DELIMITER $$
 CREATE PROCEDURE liste_objets(IN _id_personnage INT)
 BEGIN
-    SELECT nom FROM objet o INNER JOIN objet_personnage op ON o.id = op.id_objet ORDER BY type DESC LIMIT 8 ;
+    SELECT nom
+    FROM objet o
+             INNER JOIN objet_personnage op ON o.id = op.id_objet
+    ORDER BY type DESC
+    LIMIT 8;
 END;
 $$
 DELIMITER ;
@@ -92,7 +130,10 @@ DROP PROCEDURE IF EXISTS liste_armes;
 DELIMITER $$
 CREATE PROCEDURE liste_armes(IN _id_personnage INT)
 BEGIN
-    SELECT nom FROM arme a INNER JOIN arme_personnage ap ON a.id = ap.id_arme LIMIT 2;
+    SELECT nom
+    FROM arme a
+             INNER JOIN arme_personnage ap ON a.id = ap.id_arme
+    LIMIT 2;
 END;
 $$
 DELIMITER ;
@@ -121,7 +162,7 @@ CREATE TRIGGER trigger_peut_transporter_arme
     ON arme_personnage
     FOR EACH ROW
 BEGIN
-    IF NOT peut_transporter_arme(NEW.id_personnage) THEN
+    IF NOT peut_transporter_arme(new.id_personnage) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Ce personnage ne peut plus transporter d\'armes';
     END IF;
@@ -137,7 +178,7 @@ CREATE TRIGGER trigger_peut_transporter_objet
     ON objet_personnage
     FOR EACH ROW
 BEGIN
-    IF NOT peut_transporter_objet(NEW.id_personnage) THEN
+    IF NOT peut_transporter_objet(new.id_personnage) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Ce personnage ne peut plus transporter d\'objets';
     END IF;

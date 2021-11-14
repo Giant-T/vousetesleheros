@@ -1,5 +1,4 @@
 
-
 CREATE USER IF NOT EXISTS 'JoeDever'@'localhost' IDENTIFIED BY 'GaryChalk';
 GRANT SELECT, INSERT, UPDATE, DELETE ON vous_etes_le_heros.partie TO 'JoeDever'@'localhost';
 GRANT SELECT, INSERT, UPDATE, DELETE ON vous_etes_le_heros.personnage TO 'JoeDever'@'localhost';
@@ -10,3 +9,4 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON vous_etes_le_heros.discipline_kai_person
 GRANT SELECT ON vous_etes_le_heros.livre TO 'JoeDever'@'localhost';
 GRANT SELECT ON vous_etes_le_heros.chapitre TO 'JoeDever'@'localhost';
 GRANT SELECT ON vous_etes_le_heros.choix_page TO 'JoeDever'@'localhost';
+GRANT EXECUTE ON FUNCTION premier_chapitre_id TO 'JoeDever'@'localhost';
