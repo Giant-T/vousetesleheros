@@ -74,33 +74,67 @@ class MainWindow(QMainWindow):
     def personnageTabUI(self) -> QWidget:
         personnage_tab = QWidget()
         outer_layout = QVBoxLayout()
-        layout_attributs = QHBoxLayout()
-        layout_objet = QVBoxLayout()
-
-        list_objets = QListWidget()
-        objets = self.requeteObjets()
-        for i in range(0, 8):
-            if i < len(objets):
-                nom = objets[i]
-            else:
-                nom = 'vide'
-            list_objets.addItem(nom)
-        layout_objet.addWidget(list_objets)
-        self.selection_objet = QComboBox()
-        layout_objet.addWidget(self.selection_objet)
-
-        attributs = self.requeteInfoPersonnage()
-        text_endurance = QLineEdit(str(attributs['endurance']))
-        text_habilete = QLineEdit(str(attributs['habilete']))
-        text_or = QLineEdit(str(attributs['or']))
-        layout_attributs.addWidget(text_endurance)
-        layout_attributs.addWidget(text_habilete)
-        layout_attributs.addWidget(text_or)
-        
-        outer_layout.addLayout(layout_attributs)
-        outer_layout.addLayout(layout_objet)
+        outer_layout.addLayout(self.infoPersonnage())
+        outer_layout.addLayout(self.inventairePersonnage())
+        outer_layout.addLayout(self.inventairePersonnage())
+        outer_layout.addLayout(self.inventairePersonnage())
+        outer_layout.addLayout(self.inventairePersonnage())
         personnage_tab.setLayout(outer_layout)
         return personnage_tab
+    
+    def objetTabUI(self, text_bouton:str) -> QWidget:
+        objet_tab = QWidget()
+        outer_layout = QVBoxLayout()
+        choix_objet = QComboBox()
+        bouton_ajouter = QPushButton(text_bouton)
+        outer_layout.addWidget(choix_objet, stretch=1)
+        outer_layout.addWidget(bouton_ajouter, stretch=1)
+        objet_tab.setLayout(outer_layout)
+        return objet_tab
+
+    def inventairePersonnage(self) -> QVBoxLayout:
+        outer_layout = QVBoxLayout()
+        label_objet = QLabel("Objets:")
+        outer_layout.addWidget(label_objet)
+        layout_objet = QHBoxLayout()
+        self.list_objets = QComboBox()
+        bouton_ajouter = QPushButton('Ajouter')
+        bouton_ajouter.clicked.connect(self.boutonAjouterObjet)
+        bouton_modifier = QPushButton('Modifier')
+        bouton_supprimer = QPushButton('Supprimer')
+        objets = self.requeteObjets()
+        for i in range(0, len(objets['nom'])):
+            self.list_objets.addItem(objets['nom'][i], objets['nom'][i])
+        layout_objet.addWidget(self.list_objets, stretch=2)
+        layout_objet.addWidget(bouton_ajouter, stretch=1)
+        if (len(self.list_objets.currentText()) >= 1):
+            layout_objet.addWidget(bouton_modifier, stretch=1)
+            layout_objet.addWidget(bouton_supprimer, stretch=1)
+        outer_layout.addLayout(layout_objet)
+        return outer_layout
+
+    def infoPersonnage(self) -> QVBoxLayout:
+        layout_attributs = QHBoxLayout()
+        attributs = self.requeteInfoPersonnage()
+        text_endurance = QLineEdit(str(attributs['endurance']))
+        text_endurance.textChanged.connect(self.modifierEndurance)
+        text_habilete = QLineEdit(str(attributs['habilete']))
+        text_or = QLineEdit(str(attributs['or']))
+        layout_attributs.addWidget(QLabel("Endurance:"))
+        layout_attributs.addWidget(text_endurance)
+        layout_attributs.addWidget(QLabel("Habileté:"))
+        layout_attributs.addWidget(text_habilete)
+        layout_attributs.addWidget(QLabel("Or:"))
+        layout_attributs.addWidget(text_or)
+        return layout_attributs
+    
+    def modifierEndurance(self):
+        endurance = str(self.sender().text())
+        if (endurance.isdigit()):
+            endurance = str(int(endurance))
+        else:
+            endurance = '0'
+        self.sender().setText(endurance)
 
     def requetePersonnage(self) -> dict[str, int]:
         mon_curseur.execute("SELECT nom, titre, partie.id as id_livre FROM partie INNER JOIN livre ON id_livre = livre.id ORDER BY nom;")
@@ -116,7 +150,7 @@ class MainWindow(QMainWindow):
         parties['id'] = ids
         return parties
     
-    def requeteInfoPersonnage(self):
+    def requeteInfoPersonnage(self) -> dict:
         sql = "SELECT endurance, habilete, `or` as or_perso FROM personnage WHERE id_partie = %s;"
         data = (self.id_partie,)
         mon_curseur.execute(sql, data)
@@ -128,16 +162,27 @@ class MainWindow(QMainWindow):
             infos['or'] = or_perso
         return infos
 
-    def requeteObjets(self):
+    def requeteObjets(self) -> dict:
         data  = (self.id_partie,)
-        sql = """SELECT nom FROM personnage INNER JOIN objet_personnage ON id_personnage = personnage.id 
+        sql = """SELECT nom, objet_personnage.id as id_objet FROM personnage INNER JOIN objet_personnage ON id_personnage = personnage.id 
                 INNER JOIN objet ON id_objet = objet.id WHERE id_partie = %s;"""
         mon_curseur.execute(sql, data)
         resultat = mon_curseur.fetchall()
+        objets = {}
         nom_objet = []
-        for nom in resultat:
-            nom_objet.append(nom[0])
-        return nom_objet
+        id_objet = []
+        for nom, id_objet in resultat:
+            nom_objet.append(nom)
+            id_objet.append(id_objet)
+        objets['nom'] = nom_objet
+        objets['id'] = id_objet 
+        return objets
+
+    def boutonAjouterObjet(self):
+        page_ajout = self.objetTabUI('Ajouter Objet')
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_ajout, 'Ajout Objet')
+        self.tabs.setCurrentIndex(1)
 
     def requeteTextePage(self, id_partie:int) -> str:
         data = (id_partie,)
