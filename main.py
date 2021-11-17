@@ -115,14 +115,10 @@ class MainWindow(QMainWindow):
         livres['id'] = ids
         return livres
 
-    
     def personnageTabUI(self) -> QWidget:
         personnage_tab = QWidget()
         outer_layout = QVBoxLayout()
         outer_layout.addLayout(self.infoPersonnage())
-        outer_layout.addLayout(self.inventairePersonnage())
-        outer_layout.addLayout(self.inventairePersonnage())
-        outer_layout.addLayout(self.inventairePersonnage())
         outer_layout.addLayout(self.inventairePersonnage())
         personnage_tab.setLayout(outer_layout)
         return personnage_tab
@@ -130,12 +126,44 @@ class MainWindow(QMainWindow):
     def objetTabUI(self, text_bouton:str) -> QWidget:
         objet_tab = QWidget()
         outer_layout = QVBoxLayout()
-        choix_objet = QComboBox()
+        self.choix_objet = QComboBox()
+        objets = self.requeteObjets()
+        for i in range(0, len(objets['nom'])):
+            self.choix_objet.addItem(objets['nom'][i], objets['id'][i])
         bouton_ajouter = QPushButton(text_bouton)
-        outer_layout.addWidget(choix_objet, stretch=1)
+        bouton_ajouter.clicked.connect(self.ajouterObjetInventaire)
+        outer_layout.addWidget(self.choix_objet, stretch=1)
         outer_layout.addWidget(bouton_ajouter, stretch=1)
         objet_tab.setLayout(outer_layout)
         return objet_tab
+
+    def ajouterObjetInventaire(self):
+        data = (self.id_partie,)
+        sql = 'SELECT id FROM personnage WHERE id_partie = %s;'
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        id_joueur:str
+        for id in resultat:
+            id_joueur = id[0]
+        id_objet = self.choix_objet.itemData(self.choix_objet.currentIndex())
+        data = (id_objet, id_joueur)
+        sql = 'INSERT INTO objet_personnage(id_objet, id_personnage) VALUES(%s, %s);'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+    
+    def supprimerObjetInventaire(self):
+        data = (self.list_objets.itemData(self.list_objets.currentIndex()),)
+        sql = 'DELETE FROM objet_personnage WHERE id = %s;'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
 
     def inventairePersonnage(self) -> QVBoxLayout:
         outer_layout = QVBoxLayout()
@@ -147,11 +175,13 @@ class MainWindow(QMainWindow):
         bouton_ajouter.clicked.connect(self.boutonAjouterObjet)
         bouton_modifier = QPushButton('Modifier')
         bouton_supprimer = QPushButton('Supprimer')
-        objets = self.requeteObjets()
+        bouton_supprimer.clicked.connect(self.supprimerObjetInventaire)
+        objets = self.requeteObjetsPersonnage()
         for i in range(0, len(objets['nom'])):
-            self.list_objets.addItem(objets['nom'][i], objets['nom'][i])
+            self.list_objets.addItem(objets['nom'][i], objets['id'][i])
         layout_objet.addWidget(self.list_objets, stretch=2)
-        layout_objet.addWidget(bouton_ajouter, stretch=1)
+        if (self.list_objets.count() < 8):
+            layout_objet.addWidget(bouton_ajouter, stretch=1)
         if (len(self.list_objets.currentText()) >= 1):
             layout_objet.addWidget(bouton_modifier, stretch=1)
             layout_objet.addWidget(bouton_supprimer, stretch=1)
@@ -184,7 +214,6 @@ class MainWindow(QMainWindow):
     def requetePersonnage(self) -> dict[str, int]:
         mon_curseur.execute("SELECT nom, titre, partie.id as id_livre FROM partie INNER JOIN livre ON id_livre = livre.id ORDER BY nom;")
         resultat = mon_curseur.fetchall()
-        
         parties = {}
         titres = []
         ids = []
@@ -207,20 +236,34 @@ class MainWindow(QMainWindow):
             infos['or'] = or_perso
         return infos
 
-    def requeteObjets(self) -> dict:
+    def requeteObjetsPersonnage(self) -> dict:
         data  = (self.id_partie,)
-        sql = """SELECT nom, objet_personnage.id as id_objet FROM personnage INNER JOIN objet_personnage ON id_personnage = personnage.id 
+        sql = """SELECT CONCAT(nom, ' - ', type) as nom, objet_personnage.id as id_objet FROM personnage INNER JOIN objet_personnage ON id_personnage = personnage.id 
                 INNER JOIN objet ON id_objet = objet.id WHERE id_partie = %s;"""
         mon_curseur.execute(sql, data)
         resultat = mon_curseur.fetchall()
         objets = {}
         nom_objet = []
-        id_objet = []
+        ids = []
         for nom, id_objet in resultat:
             nom_objet.append(nom)
-            id_objet.append(id_objet)
+            ids.append(id_objet)
         objets['nom'] = nom_objet
-        objets['id'] = id_objet 
+        objets['id'] = ids 
+        return objets
+    
+    def requeteObjets(self) -> dict:
+        sql = "SELECT CONCAT(nom, ' - ', type) as nom_objet, id FROM objet ORDER BY objet.nom;"
+        mon_curseur.execute(sql)
+        resultat = mon_curseur.fetchall()
+        objets = {}
+        nom_objet = []
+        id_objet = []
+        for nom, id in resultat:
+            nom_objet.append(nom)
+            id_objet.append(id)
+        objets['nom'] = nom_objet
+        objets['id'] = id_objet
         return objets
 
     def boutonAjouterObjet(self):
@@ -265,7 +308,6 @@ class MainWindow(QMainWindow):
         self.tabs.removeTab(0)
         self.tabs.removeTab(0)
 
-        
     def soumissionSelectionPartie(self):
         self.id_partie = self.combo_box.itemData(self.combo_box.currentIndex())
         page_tab = self.pageTabUI()
@@ -277,13 +319,13 @@ class MainWindow(QMainWindow):
     
     def changementPage(self):
         destination = int(self.sender().text())
-        data = (self.chapitre, destination)
-        sql = "SELECT id as id_chapitre FROM chapitre WHERE id = %s AND numero_chapitre = %s;"
+        data = (destination, self.id_partie)
+        sql = "SELECT chapitre.id as id_chapitre FROM chapitre INNER JOIN livre l ON chapitre.id_livre = l.id INNER JOIN partie p ON l.id = p.id_livre WHERE numero_chapitre = %s AND p.id = %s;"
         mon_curseur.execute(sql, data)
         resultats = mon_curseur.fetchall()
         for id_chapitre in resultats:
             self.chapitre = id_chapitre[0]
-        data = (destination, self.id_partie)
+        data = (self.chapitre, self.id_partie)
         sql = "UPDATE partie SET id_chapitre = %s WHERE id = %s;"
         mon_curseur.execute(sql, data)
         page_tab = self.pageTabUI()
