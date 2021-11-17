@@ -123,17 +123,20 @@ class MainWindow(QMainWindow):
         personnage_tab.setLayout(outer_layout)
         return personnage_tab
     
-    def objetTabUI(self, text_bouton:str) -> QWidget:
+    def objetTabUI(self, text_bouton:str, ajout:bool = True) -> QWidget:
         objet_tab = QWidget()
         outer_layout = QVBoxLayout()
         self.choix_objet = QComboBox()
         objets = self.requeteObjets()
         for i in range(0, len(objets['nom'])):
             self.choix_objet.addItem(objets['nom'][i], objets['id'][i])
-        bouton_ajouter = QPushButton(text_bouton)
-        bouton_ajouter.clicked.connect(self.ajouterObjetInventaire)
+        bouton_action = QPushButton(text_bouton)
+        if ajout:
+            bouton_action.clicked.connect(self.ajouterObjetInventaire)
+        else:
+            bouton_action.clicked.connect(self.modifierObjetInventaire)
         outer_layout.addWidget(self.choix_objet, stretch=1)
-        outer_layout.addWidget(bouton_ajouter, stretch=1)
+        outer_layout.addWidget(bouton_action, stretch=1)
         objet_tab.setLayout(outer_layout)
         return objet_tab
 
@@ -148,6 +151,16 @@ class MainWindow(QMainWindow):
         id_objet = self.choix_objet.itemData(self.choix_objet.currentIndex())
         data = (id_objet, id_joueur)
         sql = 'INSERT INTO objet_personnage(id_objet, id_personnage) VALUES(%s, %s);'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+
+    def modifierObjetInventaire(self):
+        data = (self.choix_objet.itemData(self.choix_objet.currentIndex()), self.list_objets.itemData(self.list_objets.currentIndex()))
+        sql = 'UPDATE objet_personnage SET id_objet = %s WHERE id = %s;'
         mon_curseur.execute(sql, data)
         mybd.commit()
         self.tabs.removeTab(1)
@@ -174,6 +187,7 @@ class MainWindow(QMainWindow):
         bouton_ajouter = QPushButton('Ajouter')
         bouton_ajouter.clicked.connect(self.boutonAjouterObjet)
         bouton_modifier = QPushButton('Modifier')
+        bouton_modifier.clicked.connect(self.boutonModifierObjet)
         bouton_supprimer = QPushButton('Supprimer')
         bouton_supprimer.clicked.connect(self.supprimerObjetInventaire)
         objets = self.requeteObjetsPersonnage()
@@ -270,6 +284,12 @@ class MainWindow(QMainWindow):
         page_ajout = self.objetTabUI('Ajouter Objet')
         self.tabs.removeTab(1)
         self.tabs.addTab(page_ajout, 'Ajout Objet')
+        self.tabs.setCurrentIndex(1)
+    
+    def boutonModifierObjet(self):
+        page_modif = self.objetTabUI('Modifier Objet', False)
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_modif, 'Modifier Objet')
         self.tabs.setCurrentIndex(1)
 
     def requeteTextePage(self, id_partie:int) -> str:
