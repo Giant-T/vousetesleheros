@@ -206,9 +206,14 @@ class MainWindow(QMainWindow):
         layout_attributs = QHBoxLayout()
         attributs = self.requeteInfoPersonnage()
         text_endurance = QLineEdit(str(attributs['endurance']))
-        text_endurance.textChanged.connect(self.modifierEndurance)
+        text_endurance.textChanged.connect(self.formaterNombre)
+        text_endurance.editingFinished.connect(self.majPersonnageEndurance)
         text_habilete = QLineEdit(str(attributs['habilete']))
+        text_habilete.textChanged.connect(self.formaterNombre)
+        text_habilete.editingFinished.connect(self.majPersonnageHabilete)
         text_or = QLineEdit(str(attributs['or']))
+        text_or.textChanged.connect(self.formaterNombre)
+        text_or.editingFinished.connect(self.majPersonnageOr)
         layout_attributs.addWidget(QLabel("Endurance:"))
         layout_attributs.addWidget(text_endurance)
         layout_attributs.addWidget(QLabel("Habileté:"))
@@ -216,14 +221,41 @@ class MainWindow(QMainWindow):
         layout_attributs.addWidget(QLabel("Or:"))
         layout_attributs.addWidget(text_or)
         return layout_attributs
-    
-    def modifierEndurance(self):
-        endurance = str(self.sender().text())
-        if (endurance.isdigit()):
-            endurance = str(int(endurance))
+
+    def formaterNombre(self):
+        nombre = str(self.sender().text())
+        if (nombre.isdigit()):
+            nombre = str(int(nombre))
         else:
-            endurance = '0'
-        self.sender().setText(endurance)
+            nombre = '0'
+        self.sender().setText(nombre)
+
+    def majPersonnageEndurance(self):
+        nouvelleValeur = str(self.sender().text())
+        if nouvelleValeur.isdigit() and self.sender().isModified:
+            data = (nouvelleValeur, self.id_partie)
+            sql = "UPDATE personnage SET endurance = %s WHERE id_partie = %s;"
+            mon_curseur.execute(sql, data)
+            mybd.commit()
+
+    def majPersonnageHabilete(self):
+        nouvelleValeur = str(self.sender().text())
+        if nouvelleValeur.isdigit() and self.sender().isModified:
+            data = (nouvelleValeur, self.id_partie)
+            sql = "UPDATE personnage SET habilete = %s WHERE id_partie = %s;"
+            mon_curseur.execute(sql, data)
+            mybd.commit()
+
+    def majPersonnageOr(self):
+        nouvelleValeur = str(self.sender().text())
+        if nouvelleValeur.isdigit() and self.sender().isModified:
+            if int(nouvelleValeur) > 50:
+                nouvelleValeur = '50'
+                self.sender().setText(nouvelleValeur)
+            data = (nouvelleValeur, self.id_partie)
+            sql = "UPDATE personnage SET `or` = %s WHERE id_partie = %s;"
+            mon_curseur.execute(sql, data)
+            mybd.commit()
 
     def requetePersonnage(self) -> dict[str, int]:
         mon_curseur.execute("SELECT nom, titre, partie.id as id_livre FROM partie INNER JOIN livre ON id_livre = livre.id ORDER BY nom;")
