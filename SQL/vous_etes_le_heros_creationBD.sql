@@ -42,8 +42,8 @@ CREATE TABLE personnage
 (
     id        INT PRIMARY KEY AUTO_INCREMENT,
     id_partie INT NOT NULL,
-    endurance INT NOT NULL,
-    habilete  INT NOT NULL,
+    endurance INT NOT NULL DEFAULT 0,
+    habilete  INT NOT NULL DEFAULT 0,
     `or`      INT NOT NULL DEFAULT 12,
     FOREIGN KEY (id_partie) REFERENCES partie (id),
     CONSTRAINT CHECK(`or` <= 50)
