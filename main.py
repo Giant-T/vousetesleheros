@@ -259,6 +259,10 @@ class MainWindow(QMainWindow):
         mybd.commit()
 
         self.id_partie = mon_curseur.lastrowid
+        data = (self.id_partie,)
+        sql = "INSERT INTO personnage (id_partie) VALUES (%s);"
+        mon_curseur.execute(sql, data)
+        mybd.commit()
         page_tab = self.pageTabUI()
         self.tabs.addTab(page_tab, "Page")
 

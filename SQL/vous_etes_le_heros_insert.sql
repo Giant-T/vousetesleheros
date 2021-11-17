@@ -16,8 +16,7 @@ VALUES (1, 1, 1, 2),
        (2, 1, 1, 3),
        (4, 1, 2, 3),
        (5, 1, 3, 1),
-       (6, 1, 3, 2),
-       (6, 1, 3, 3);
+       (6, 1, 3, 2);
 
 INSERT INTO partie (id, nom, id_chapitre, id_livre)
 VALUES (1, 'William Boudro', 1, 1);
