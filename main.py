@@ -25,6 +25,9 @@ class MainWindow(QMainWindow):
         # print(self.combo_box.itemData(self.combo_box.currentIndex()))
     
     def initUI(self):
+        """
+        Initialise le ui de base du programme
+        """
         self.setWindowIcon(QIcon('icon.png'))
         self.setWindowTitle("Dont Vous Êtes le Héros")
         self.setFixedSize(640, 480)
@@ -40,6 +43,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tabs)
 
     def connexionTabUI(self) -> QWidget:
+        """
+        Crée la page de connexion du jeu
+        returns: la page de connexion
+        """
         connexion_tab = QWidget()
         layout = QVBoxLayout()
         self.combo_box = QComboBox()
@@ -119,6 +126,8 @@ class MainWindow(QMainWindow):
         personnage_tab = QWidget()
         outer_layout = QVBoxLayout()
         outer_layout.addLayout(self.infoPersonnage())
+        outer_layout.addLayout(self.disciplinesPersonnage())
+        outer_layout.addLayout(self.armesPersonnage())
         outer_layout.addLayout(self.inventairePersonnage())
         personnage_tab.setLayout(outer_layout)
         return personnage_tab
@@ -126,16 +135,16 @@ class MainWindow(QMainWindow):
     def objetTabUI(self, text_bouton:str, ajout:bool = True) -> QWidget:
         objet_tab = QWidget()
         outer_layout = QVBoxLayout()
-        self.choix_objet = QComboBox()
+        self.choix_item = QComboBox()
         objets = self.requeteObjets()
         for i in range(0, len(objets['nom'])):
-            self.choix_objet.addItem(objets['nom'][i], objets['id'][i])
+            self.choix_item.addItem(objets['nom'][i], objets['id'][i])
         bouton_action = QPushButton(text_bouton)
         if ajout:
             bouton_action.clicked.connect(self.ajouterObjetInventaire)
         else:
             bouton_action.clicked.connect(self.modifierObjetInventaire)
-        outer_layout.addWidget(self.choix_objet, stretch=1)
+        outer_layout.addWidget(self.choix_item, stretch=1)
         outer_layout.addWidget(bouton_action, stretch=1)
         objet_tab.setLayout(outer_layout)
         return objet_tab
@@ -148,7 +157,7 @@ class MainWindow(QMainWindow):
         id_joueur:str
         for id in resultat:
             id_joueur = id[0]
-        id_objet = self.choix_objet.itemData(self.choix_objet.currentIndex())
+        id_objet = self.choix_item.itemData(self.choix_item.currentIndex())
         data = (id_objet, id_joueur)
         sql = 'INSERT INTO objet_personnage(id_objet, id_personnage) VALUES(%s, %s);'
         mon_curseur.execute(sql, data)
@@ -159,13 +168,25 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentIndex(1)
 
     def modifierObjetInventaire(self):
-        data = (self.choix_objet.itemData(self.choix_objet.currentIndex()), self.list_objets.itemData(self.list_objets.currentIndex()))
+        data = (self.choix_item.itemData(self.choix_item.currentIndex()), self.list_objets.itemData(self.list_objets.currentIndex()))
         sql = 'UPDATE objet_personnage SET id_objet = %s WHERE id = %s;'
         mon_curseur.execute(sql, data)
         mybd.commit()
         self.tabs.removeTab(1)
         page_personnage = self.personnageTabUI()
         self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+    
+    def boutonAjouterObjet(self):
+        page_ajout = self.objetTabUI('Ajouter Objet')
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_ajout, 'Ajout Objet')
+        self.tabs.setCurrentIndex(1)
+    
+    def boutonModifierObjet(self):
+        page_modif = self.objetTabUI('Modifier Objet', False)
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_modif, 'Modifier Objet')
         self.tabs.setCurrentIndex(1)
     
     def supprimerObjetInventaire(self):
@@ -194,13 +215,197 @@ class MainWindow(QMainWindow):
         for i in range(0, len(objets['nom'])):
             self.list_objets.addItem(objets['nom'][i], objets['id'][i])
         layout_objet.addWidget(self.list_objets, stretch=2)
-        if (self.list_objets.count() < 8):
-            layout_objet.addWidget(bouton_ajouter, stretch=1)
-        if (len(self.list_objets.currentText()) >= 1):
-            layout_objet.addWidget(bouton_modifier, stretch=1)
-            layout_objet.addWidget(bouton_supprimer, stretch=1)
+        layout_objet.addLayout(self.boutonsPersonnage(2, self.list_objets, bouton_ajouter, bouton_modifier, bouton_supprimer))
         outer_layout.addLayout(layout_objet)
         return outer_layout
+
+    def armeTabUI(self, text_bouton:str, ajout:bool = True) -> QWidget:
+        arme_tab = QWidget()
+        outer_layout = QVBoxLayout()
+        self.choix_item = QComboBox()
+        armes = self.requeteArmes()
+        for i in range(0, len(armes['nom'])):
+            self.choix_item.addItem(armes['nom'][i], armes['id'][i])
+        bouton_action = QPushButton(text_bouton)
+        if ajout:
+            bouton_action.clicked.connect(self.ajouterArmeInventaire)
+        else:
+            bouton_action.clicked.connect(self.modifierArmeInventaire)
+        outer_layout.addWidget(self.choix_item, stretch=1)
+        outer_layout.addWidget(bouton_action, stretch=1)
+        arme_tab.setLayout(outer_layout)
+        return arme_tab
+    
+    def ajouterArmeInventaire(self):
+        data = (self.id_partie,)
+        sql = 'SELECT id FROM personnage WHERE id_partie = %s;'
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        id_joueur:str
+        for id in resultat:
+            id_joueur = id[0]
+        id_arme = self.choix_item.itemData(self.choix_item.currentIndex())
+        data = (id_arme, id_joueur)
+        sql = 'INSERT INTO arme_personnage(id_arme, id_personnage) VALUES(%s, %s);'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+    
+    def modifierArmeInventaire(self):
+        data = (self.choix_item.itemData(self.choix_item.currentIndex()), self.list_armes.itemData(self.list_armes.currentIndex()))
+        sql = 'UPDATE arme_personnage SET id_arme = %s WHERE id = %s;'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+
+    def boutonAjouterArme(self):
+        page_ajout = self.armeTabUI('Ajouter Arme')
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_ajout, 'Ajout Arme')
+        self.tabs.setCurrentIndex(1)
+
+    def boutonModifierArme(self):
+        page_modif = self.armeTabUI('Modifier Arme', False)
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_modif, 'Modifier Arme')
+        self.tabs.setCurrentIndex(1)
+    
+    def supprimerArmeInventaire(self):
+        data = (self.list_armes.itemData(self.list_armes.currentIndex()),)
+        sql = 'DELETE FROM arme_personnage WHERE id = %s;'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+
+    def armesPersonnage(self) -> QVBoxLayout:
+        outer_layout = QVBoxLayout()
+        label_arme = QLabel("Armes:")
+        outer_layout.addWidget(label_arme)
+        layout_arme = QHBoxLayout()
+        self.list_armes = QComboBox()
+        armes = self.requeteArmesPersonnage()
+        for i in range(0, len(armes['nom'])):
+            self.list_armes.addItem(armes['nom'][i], armes['id'][i])
+        bouton_ajouter = QPushButton("Ajouter")
+        bouton_ajouter.clicked.connect(self.boutonAjouterArme)
+        bouton_modifier = QPushButton("Modifier")
+        bouton_modifier.clicked.connect(self.boutonModifierArme)
+        bouton_supprimer = QPushButton("Supprimer")
+        bouton_supprimer.clicked.connect(self.supprimerArmeInventaire)
+        layout_arme.addWidget(self.list_armes, stretch=2)
+        layout_arme.addLayout(self.boutonsPersonnage(2, self.list_armes, bouton_ajouter, bouton_modifier, bouton_supprimer))
+        outer_layout.addLayout(layout_arme)
+        return outer_layout
+
+    def disciplineTabUI(self, text_bouton:str, ajout:bool = True) -> QWidget:
+        """
+        Tab qui s'occupe de l'ajout et de la modification des disciplines
+        text_bouton:str -- Le texte qui sera afficher sur le bouton
+        ajout:bool -- True l'action du bouton sera d'ajouter une discipline | False le bouton servira a la modification de la discipline
+        """
+        discipline_tab = QWidget()
+        outer_layout = QVBoxLayout()
+        self.choix_item = QComboBox()
+        disciplines = self.requeteDisciplines()
+        for i in range(0, len(disciplines['nom'])):
+            self.choix_item.addItem(disciplines['nom'][i], disciplines['id'][i])
+        bouton_action = QPushButton(text_bouton)
+        if ajout:
+            bouton_action.clicked.connect(self.ajouterDisciplineInventaire)
+        else:
+            bouton_action.clicked.connect(self.modifierDisciplineInventaire)
+        outer_layout.addWidget(self.choix_item, stretch=1)
+        outer_layout.addWidget(bouton_action, stretch=1)
+        discipline_tab.setLayout(outer_layout)
+        return discipline_tab
+    
+    def ajouterDisciplineInventaire(self):
+        data = (self.id_partie,)
+        sql = 'SELECT id FROM personnage WHERE id_partie = %s;'
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        id_joueur:str
+        for id in resultat:
+            id_joueur = id[0]
+        id_discipline = self.choix_item.itemData(self.choix_item.currentIndex())
+        data = (id_discipline, id_joueur)
+        sql = 'INSERT INTO discipline_kai_personnage(id_discipline_kai, id_personnage) VALUES(%s, %s);'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+    
+    def modifierDisciplineInventaire(self):
+        data = (self.choix_item.itemData(self.choix_item.currentIndex()), self.list_disciplines.itemData(self.list_disciplines.currentIndex()))
+        sql = 'UPDATE discipline_kai_personnage SET id_discipline_kai = %s WHERE CONCAT(id_personnage, id_discipline_kai) = %s;'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+
+    def boutonAjouterDiscipline(self):
+        page_ajout = self.disciplineTabUI('Ajouter Discipline')
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_ajout, 'Ajout Discipline')
+        self.tabs.setCurrentIndex(1)
+
+    def boutonModifierDiscipline(self):
+        page_modif = self.disciplineTabUI('Modifier Discipline', False)
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_modif, 'Modifier Discipline')
+        self.tabs.setCurrentIndex(1)
+
+    def supprimerDisciplineInventaire(self):
+        data = (self.list_disciplines.itemData(self.list_disciplines.currentIndex()),)
+        sql = 'DELETE FROM discipline_kai_personnage WHERE CONCAT(id_personnage, id_discipline_kai) = %s;'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+
+    def disciplinesPersonnage(self) -> QVBoxLayout:
+        outer_layout = QVBoxLayout()
+        label_disciplines = QLabel('Disciplines Kai:')
+        outer_layout.addWidget(label_disciplines)
+        layout_disciplines = QHBoxLayout()
+        self.list_disciplines = QComboBox()
+        disciplines = self.requeteDisciplinesPersonnage()
+        for i in range(0, len(disciplines['nom'])):
+            self.list_disciplines.addItem(disciplines['nom'][i], disciplines['id'][i])
+        bouton_ajouter = QPushButton('Ajouter')
+        bouton_ajouter.clicked.connect(self.boutonAjouterDiscipline)
+        bouton_modifier = QPushButton('Modifier')
+        bouton_modifier.clicked.connect(self.boutonModifierDiscipline)
+        bouton_supprimer = QPushButton('Supprimer')
+        bouton_supprimer.clicked.connect(self.supprimerDisciplineInventaire)
+        layout_disciplines.addWidget(self.list_disciplines, stretch=2)
+        layout_disciplines.addLayout(self.boutonsPersonnage(6, self.list_disciplines, bouton_ajouter, bouton_modifier, bouton_supprimer))
+        outer_layout.addLayout(layout_disciplines)
+        return outer_layout
+
+    def boutonsPersonnage(self, max_length:int, combo_box_item:QComboBox, bouton_ajouter:QPushButton, bouton_modifier:QPushButton, bouton_supprimer:QPushButton) -> QHBoxLayout:
+        layout_item = QHBoxLayout()
+        if (combo_box_item.count() < max_length):
+            layout_item.addWidget(bouton_ajouter, stretch=1)
+        if (len(combo_box_item.currentText()) > 0):
+            layout_item.addWidget(bouton_modifier, stretch=1)
+            layout_item.addWidget(bouton_supprimer, stretch=1)
+        return layout_item
 
     def infoPersonnage(self) -> QVBoxLayout:
         layout_attributs = QHBoxLayout()
@@ -253,7 +458,7 @@ class MainWindow(QMainWindow):
     def requeteObjetsPersonnage(self) -> dict:
         data  = (self.id_partie,)
         sql = """SELECT CONCAT(nom, ' - ', type) as nom, objet_personnage.id as id_objet FROM personnage INNER JOIN objet_personnage ON id_personnage = personnage.id 
-                INNER JOIN objet ON id_objet = objet.id WHERE id_partie = %s;"""
+                INNER JOIN objet ON id_objet = objet.id WHERE id_partie = %s ORDER BY nom;"""
         mon_curseur.execute(sql, data)
         resultat = mon_curseur.fetchall()
         objets = {}
@@ -265,6 +470,36 @@ class MainWindow(QMainWindow):
         objets['nom'] = nom_objet
         objets['id'] = ids 
         return objets
+
+    def requeteArmesPersonnage(self) -> dict:
+        data  = (self.id_partie,)
+        sql = "SELECT nom, ap.id as id_arme FROM personnage INNER JOIN arme_personnage ap ON personnage.id = ap.id_personnage INNER JOIN arme a ON ap.id_arme = a.id WHERE id_partie = %s ORDER BY nom;"
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        armes = {}
+        nom_arme = []
+        ids = []
+        for nom, id_arme in resultat:
+            nom_arme.append(nom)
+            ids.append(id_arme)
+        armes['nom'] = nom_arme
+        armes['id'] = ids 
+        return armes
+
+    def requeteDisciplinesPersonnage(self) -> dict:
+        data  = (self.id_partie,)
+        sql = "SELECT nom, CONCAT(id_personnage, id_discipline_kai) as id_discipline FROM personnage INNER JOIN discipline_kai_personnage dkp ON personnage.id = dkp.id_personnage INNER JOIN discipline_kai dk ON dkp.id_discipline_kai = dk.id WHERE id_partie = %s ORDER BY nom;"
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        disciplines = {}
+        nom_disciplines = []
+        ids = []
+        for nom, id_discipline in resultat:
+            nom_disciplines.append(nom)
+            ids.append(id_discipline)
+        disciplines['nom'] = nom_disciplines
+        disciplines['id'] = ids 
+        return disciplines
     
     def requeteObjets(self) -> dict:
         sql = "SELECT CONCAT(nom, ' - ', type) as nom_objet, id FROM objet ORDER BY objet.nom;"
@@ -280,17 +515,45 @@ class MainWindow(QMainWindow):
         objets['id'] = id_objet
         return objets
 
-    def boutonAjouterObjet(self):
-        page_ajout = self.objetTabUI('Ajouter Objet')
-        self.tabs.removeTab(1)
-        self.tabs.addTab(page_ajout, 'Ajout Objet')
-        self.tabs.setCurrentIndex(1)
-    
-    def boutonModifierObjet(self):
-        page_modif = self.objetTabUI('Modifier Objet', False)
-        self.tabs.removeTab(1)
-        self.tabs.addTab(page_modif, 'Modifier Objet')
-        self.tabs.setCurrentIndex(1)
+    def requeteArmes(self) -> dict:
+        sql = "SELECT nom, id FROM arme ORDER BY nom;"
+        mon_curseur.execute(sql)
+        resultat = mon_curseur.fetchall()
+        armes = {}
+        nom_arme = []
+        id_arme = []
+        for nom, id in resultat:
+            nom_arme.append(nom)
+            id_arme.append(id)
+        armes['nom'] = nom_arme
+        armes['id'] = id_arme
+        return armes
+
+    def requeteDisciplines(self) -> dict:
+        """
+        Sélectionne les disciplines non acquises par le joueur
+        returns -> dict ['nom'] -- Le nom de la discipline | ['id'] -- L'id de la discipline
+        """
+        data = (self.id_partie,)
+        sql = 'SELECT id FROM personnage WHERE id_partie = %s;'
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        id_joueur:str
+        for id in resultat:
+            id_joueur = id[0]
+        data = (id_joueur,)
+        sql = "SELECT nom, id FROM discipline_kai WHERE id NOT IN (SELECT id_discipline_kai AS id FROM discipline_kai_personnage WHERE id_personnage = %s);"
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        disciplines = {}
+        nom_discipline = []
+        id_discipline = []
+        for nom, id in resultat:
+            nom_discipline.append(nom)
+            id_discipline.append(id)
+        disciplines['nom'] = nom_discipline
+        disciplines['id'] = id_discipline
+        return disciplines
 
     def requeteTextePage(self, id_partie:int) -> str:
         data = (id_partie,)
@@ -327,8 +590,9 @@ class MainWindow(QMainWindow):
         mon_curseur.execute(sql, data)
         mybd.commit()
         page_tab = self.pageTabUI()
+        perso_tab = self.personnageTabUI()
         self.tabs.addTab(page_tab, "Page")
-
+        self.tabs.addTab(perso_tab, "Personnage")
         self.tabs.removeTab(0)
         self.tabs.removeTab(0)
 

@@ -11,3 +11,5 @@ GRANT SELECT ON vous_etes_le_heros.chapitre TO 'JoeDever'@'localhost';
 GRANT SELECT ON vous_etes_le_heros.choix_page TO 'JoeDever'@'localhost';
 GRANT EXECUTE ON FUNCTION premier_chapitre_id TO 'JoeDever'@'localhost';
 GRANT SELECT ON vous_etes_le_heros.objet TO 'JoeDever'@'localhost';
+GRANT SELECT ON vous_etes_le_heros.arme TO 'JoeDever'@'localhost';
+GRANT SELECT ON vous_etes_le_heros.discipline_kai TO 'JoeDever'@'localhost';
