@@ -128,6 +128,7 @@ class MainWindow(QMainWindow):
         outer_layout.addLayout(self.infoPersonnage())
         outer_layout.addLayout(self.disciplinesPersonnage())
         outer_layout.addLayout(self.armesPersonnage())
+        outer_layout.addLayout(self.equipementsPersonnage())
         outer_layout.addLayout(self.inventairePersonnage())
         personnage_tab.setLayout(outer_layout)
         return personnage_tab
@@ -310,7 +311,8 @@ class MainWindow(QMainWindow):
         """
         Tab qui s'occupe de l'ajout et de la modification des disciplines
         text_bouton:str -- Le texte qui sera afficher sur le bouton
-        ajout:bool -- True l'action du bouton sera d'ajouter une discipline | False le bouton servira a la modification de la discipline
+        ajout:bool -- True l'action du bouton sera d'ajouter une discipline | False le bouton servira a la modification de la discipline\n
+        returns -> La tab de discipline
         """
         discipline_tab = QWidget()
         outer_layout = QVBoxLayout()
@@ -396,6 +398,99 @@ class MainWindow(QMainWindow):
         layout_disciplines.addWidget(self.list_disciplines, stretch=2)
         layout_disciplines.addLayout(self.boutonsPersonnage(6, self.list_disciplines, bouton_ajouter, bouton_modifier, bouton_supprimer))
         outer_layout.addLayout(layout_disciplines)
+        return outer_layout
+    
+    def equipementTabUI(self, text_bouton:str, ajout:bool = True) -> QWidget:
+        """
+        Tab qui s'occupe de l'ajout et de la modification des equipements
+        text_bouton:str -- Le texte qui sera afficher sur le bouton
+        ajout:bool -- True l'action du bouton sera d'ajouter un equipement | False le bouton servira a la modification de l'equipement'\n
+        returns -> La tab d'equipement
+        """
+        equipement_tab = QWidget()
+        outer_layout = QVBoxLayout()
+        self.choix_item = QComboBox()
+        equipements = self.requeteEquipements()
+        for i in range(0, len(equipements['nom'])):
+            self.choix_item.addItem(equipements['nom'][i], equipements['id'][i])
+        bouton_action = QPushButton(text_bouton)
+        if ajout:
+            bouton_action.clicked.connect(self.ajouterEquipementInventaire)
+        else:
+            bouton_action.clicked.connect(self.modifierEquipementInventaire)
+        outer_layout.addWidget(self.choix_item, stretch=1)
+        outer_layout.addWidget(bouton_action, stretch=1)
+        equipement_tab.setLayout(outer_layout)
+        return equipement_tab
+
+    def ajouterEquipementInventaire(self):
+        data = (self.id_partie,)
+        sql = 'SELECT id FROM personnage WHERE id_partie = %s;'
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        id_joueur:str
+        for id in resultat:
+            id_joueur = id[0]
+        id_equipement = self.choix_item.itemData(self.choix_item.currentIndex())
+        data = (id_equipement, id_joueur)
+        sql = 'INSERT INTO equipement_personnage(id_equipement, id_personnage) VALUES(%s, %s);'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+    
+    def modifierEquipementInventaire(self):
+        data = (self.choix_item.itemData(self.choix_item.currentIndex()), self.list_equipements.itemData(self.list_equipements.currentIndex()))
+        sql = 'UPDATE equipement_personnage SET id_equipement = %s WHERE CONCAT(id_personnage, id_equipement) = %s;'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+
+    def boutonAjouterEquipement(self):
+        page_ajout = self.equipementTabUI('Ajouter Equipement')
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_ajout, 'Ajout Equipement')
+        self.tabs.setCurrentIndex(1)
+
+    def boutonModifierEquipement(self):
+        page_modif = self.equipementTabUI('Modifier Equipement', False)
+        self.tabs.removeTab(1)
+        self.tabs.addTab(page_modif, 'Modifier Equipement')
+        self.tabs.setCurrentIndex(1)
+
+    def supprimerEquipementInventaire(self):
+        data = (self.list_equipements.itemData(self.list_equipements.currentIndex()),)
+        sql = 'DELETE FROM equipement_personnage WHERE CONCAT(id_personnage, id_equipement) = %s;'
+        mon_curseur.execute(sql, data)
+        mybd.commit()
+        self.tabs.removeTab(1)
+        page_personnage = self.personnageTabUI()
+        self.tabs.addTab(page_personnage, 'Personnage')
+        self.tabs.setCurrentIndex(1)
+
+    def equipementsPersonnage(self) -> QVBoxLayout:
+        outer_layout = QVBoxLayout()
+        label_equipements = QLabel('Équipement:')
+        outer_layout.addWidget(label_equipements)
+        layout_equipements = QHBoxLayout()
+        self.list_equipements = QComboBox()
+        equipements = self.requeteEquipementsPersonnage()
+        for i in range(0, len(equipements['nom'])):
+            self.list_equipements.addItem(equipements['nom'][i], equipements['id'][i])
+        bouton_ajouter = QPushButton('Ajouter')
+        bouton_ajouter.clicked.connect(self.boutonAjouterEquipement)
+        bouton_modifier = QPushButton('Modifier')
+        bouton_modifier.clicked.connect(self.boutonModifierEquipement)
+        bouton_supprimer = QPushButton('Supprimer')
+        bouton_supprimer.clicked.connect(self.supprimerEquipementInventaire)
+        layout_equipements.addWidget(self.list_equipements, stretch=2)
+        layout_equipements.addLayout(self.boutonsPersonnage(2, self.list_equipements, bouton_ajouter, bouton_modifier, bouton_supprimer))
+        outer_layout.addLayout(layout_equipements)
         return outer_layout
 
     def boutonsPersonnage(self, max_length:int, combo_box_item:QComboBox, bouton_ajouter:QPushButton, bouton_modifier:QPushButton, bouton_supprimer:QPushButton) -> QHBoxLayout:
@@ -500,6 +595,22 @@ class MainWindow(QMainWindow):
         disciplines['nom'] = nom_disciplines
         disciplines['id'] = ids 
         return disciplines
+
+    def requeteEquipementsPersonnage(self) -> dict:
+        data  = (self.id_partie,)
+        sql = "SELECT nom, CONCAT(id_personnage, id_equipement) as id_equipement FROM personnage INNER JOIN equipement_personnage ep ON personnage.id = ep.id_personnage INNER JOIN equipement eq ON ep.id_equipement = eq.id WHERE id_partie = %s ORDER BY nom;"
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        equipements = {}
+        nom_equipements = []
+        ids = []
+        for nom, id_equipement in resultat:
+            nom_equipements.append(nom)
+            ids.append(id_equipement)
+        equipements['nom'] = nom_equipements
+        equipements['id'] = ids 
+        return equipements
+
     
     def requeteObjets(self) -> dict:
         sql = "SELECT CONCAT(nom, ' - ', type) as nom_objet, id FROM objet ORDER BY objet.nom;"
@@ -516,6 +627,10 @@ class MainWindow(QMainWindow):
         return objets
 
     def requeteArmes(self) -> dict:
+        """
+        Sélectionne les armes
+        returns -> dict ['nom'] -- Le nom de l'arme | ['id'] -- L'id de l'arme
+        """
         sql = "SELECT nom, id FROM arme ORDER BY nom;"
         mon_curseur.execute(sql)
         resultat = mon_curseur.fetchall()
@@ -554,6 +669,32 @@ class MainWindow(QMainWindow):
         disciplines['nom'] = nom_discipline
         disciplines['id'] = id_discipline
         return disciplines
+
+    def requeteEquipements(self) -> dict:
+        """
+        Sélectionne les equipements non acquis par le joueur
+        returns -> dict ['nom'] -- Le nom de l'equipement | ['id'] -- L'id de l'equipement
+        """
+        data = (self.id_partie,)
+        sql = 'SELECT id FROM personnage WHERE id_partie = %s;'
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        id_joueur:str
+        for id in resultat:
+            id_joueur = id[0]
+        data = (id_joueur,)
+        sql = "SELECT nom, id FROM equipement WHERE id NOT IN (SELECT id_equipement AS id FROM equipement_personnage WHERE id_personnage = %s);"
+        mon_curseur.execute(sql, data)
+        resultat = mon_curseur.fetchall()
+        equipements = {}
+        nom_equipement = []
+        id_equipement = []
+        for nom, id in resultat:
+            nom_equipement.append(nom)
+            id_equipement.append(id)
+        equipements['nom'] = nom_equipement
+        equipements['id'] = id_equipement
+        return equipements
 
     def requeteTextePage(self, id_partie:int) -> str:
         data = (id_partie,)
@@ -616,6 +757,7 @@ class MainWindow(QMainWindow):
         data = (self.chapitre, self.id_partie)
         sql = "UPDATE partie SET id_chapitre = %s WHERE id = %s;"
         mon_curseur.execute(sql, data)
+        mybd.commit()
         page_tab = self.pageTabUI()
         self.tabs.removeTab(0)
         self.tabs.insertTab(0, page_tab, "Page")
